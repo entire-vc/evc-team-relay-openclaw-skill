@@ -1,0 +1,250 @@
+# EVC Team Relay — API Reference
+
+Base URL: `$RELAY_CP_URL` (e.g. `https://cp.your-domain.com`)
+
+All endpoints require `Authorization: Bearer <token>` unless noted otherwise.
+
+---
+
+## Authentication
+
+### POST /v1/auth/login
+
+Login with email and password.
+
+**No auth required.**
+
+Request:
+```json
+{"email": "user@example.com", "password": "secretpass"}
+```
+
+Response `200`:
+```json
+{
+  "access_token": "eyJ...",
+  "refresh_token": "abc123...",
+  "token_type": "bearer",
+  "expires_in": 3600
+}
+```
+
+Errors: `400` (invalid credentials), `429` (rate limit: 10/min).
+
+### POST /v1/auth/refresh
+
+Refresh an expired access token.
+
+Request:
+```json
+{"refresh_token": "abc123..."}
+```
+
+Response `200`: same as login response with new tokens.
+
+### GET /v1/auth/me
+
+Get current user information.
+
+Response `200`:
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "is_admin": false,
+  "is_active": true,
+  "created_at": "2026-01-01T00:00:00Z"
+}
+```
+
+---
+
+## Shares
+
+### GET /v1/shares
+
+List shares accessible to the authenticated user.
+
+Query parameters:
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `kind` | string | — | Filter: `doc` or `folder` |
+| `owned_only` | bool | false | Only shares owned by user |
+| `member_only` | bool | false | Only shares where user is member (not owner) |
+| `skip` | int | 0 | Pagination offset |
+| `limit` | int | 50 | Max results (1-100) |
+
+Response `200` (array):
+```json
+[
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "kind": "doc",
+    "path": "Projects/meeting-notes.md",
+    "visibility": "private",
+    "owner_user_id": "user-uuid",
+    "created_at": "2026-01-15T10:30:00Z",
+    "updated_at": "2026-02-19T08:00:00Z",
+    "is_owner": true,
+    "user_role": null,
+    "web_published": false,
+    "web_slug": null
+  }
+]
+```
+
+Fields:
+- `id` — share UUID. For `doc` shares, also used as `doc_id` and `share_id`.
+- `kind` — `doc` (single document) or `folder` (directory of documents).
+- `path` — vault-relative path (e.g. `Notes/daily.md` or `Projects/`).
+- `visibility` — `private`, `public`, or `protected`.
+- `is_owner` — true if current user owns this share.
+- `user_role` — `viewer`, `editor`, or `null` (owner/non-member).
+
+### GET /v1/shares/{id}
+
+Get share details by ID.
+
+Response `200`: single share object (same schema as list item, plus `password_protected` field).
+
+### POST /v1/shares
+
+Create a new share.
+
+Request:
+```json
+{
+  "kind": "doc",
+  "path": "Notes/new-note.md",
+  "visibility": "private"
+}
+```
+
+Response `201`: created share object.
+
+Rate limit: 20/min.
+
+---
+
+## Documents
+
+### GET /v1/documents/{doc_id}/content
+
+Read plain text content from a Yjs document.
+
+Path parameters:
+- `doc_id` — document identifier (for `doc` shares, equals `share_id`)
+
+Query parameters:
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `share_id` | UUID | required | Share UUID for ACL check |
+| `key` | string | `content` | Yjs shared type key name |
+
+Response `200`:
+```json
+{
+  "doc_id": "a1b2c3d4-...",
+  "content": "# Meeting Notes\n\nContent here...",
+  "format": "text"
+}
+```
+
+Access: viewer, editor, or owner of the share.
+
+Errors:
+- `400` — invalid `share_id` format
+- `401` — no/expired token
+- `403` — no read access
+- `404` — share not found
+- `422` — missing `share_id`
+- `502` — relay server unavailable
+
+### PUT /v1/documents/{doc_id}/content
+
+Write (replace) text content in a Yjs document.
+
+Path parameters:
+- `doc_id` — document identifier
+
+Request body:
+```json
+{
+  "share_id": "a1b2c3d4-...",
+  "content": "# Updated Content\n\nNew text here.",
+  "key": "content"
+}
+```
+
+Fields:
+- `share_id` (required) — share UUID for ACL check.
+- `content` (required) — full document text. Replaces the entire document.
+- `key` (optional, default `content`) — Yjs shared type key.
+
+Response `200`:
+```json
+{
+  "doc_id": "a1b2c3d4-...",
+  "status": "ok",
+  "length": 42
+}
+```
+
+Access: editor or owner only. Viewers get `403`.
+
+Errors: same as GET, plus `422` if `content` is missing.
+
+---
+
+## Health
+
+### GET /health
+
+Health check endpoint. **No auth required.**
+
+Response `200`:
+```json
+{"ok": true}
+```
+
+### GET /server/info
+
+Server metadata. **No auth required.**
+
+Response `200`:
+```json
+{
+  "name": "My Relay Server",
+  "version": "2.9.0",
+  "relay_url": "wss://...",
+  "features": { ... }
+}
+```
+
+---
+
+## Rate limits
+
+| Endpoint | Limit |
+|----------|-------|
+| POST /v1/auth/login | 10/min |
+| POST /v1/shares | 20/min |
+| POST /v1/tokens/relay | 30/min |
+
+Rate-limited responses return `429 Too Many Requests`.
+
+## Error format
+
+All errors return JSON:
+```json
+{"detail": "Error description"}
+```
+
+For validation errors (422):
+```json
+{
+  "detail": [
+    {"loc": ["body", "field"], "msg": "field required", "type": "value_error.missing"}
+  ]
+}
+```
