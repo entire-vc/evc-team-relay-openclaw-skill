@@ -152,7 +152,7 @@ curl -s "$RELAY_CP_URL/v1/documents/{doc_id}/content?share_id={share_id}" \
 Parameters:
 - **`doc_id`** (path) — document identifier. For `doc` shares, this equals the `share_id`.
 - **`share_id`** (query, required) — share UUID for ACL check.
-- **`key`** (query, optional, default: `content`) — Yjs shared type key.
+- **`key`** (query, optional, default: `contents`) — Yjs shared type key.
 
 Response:
 ```json
@@ -176,14 +176,14 @@ curl -s -X PUT "$RELAY_CP_URL/v1/documents/{doc_id}/content" \
   -d '{
     "share_id": "a1b2c3d4-...",
     "content": "# Updated Notes\n\nNew content here.",
-    "key": "content"
+    "key": "contents"
   }' | jq
 ```
 
 Body fields:
 - **`share_id`** (required) — share UUID for ACL check.
 - **`content`** (required) — full document text to write (replaces entire document).
-- **`key`** (optional, default: `content`) — Yjs shared type key.
+- **`key`** (optional, default: `contents`) — Yjs shared type key.
 
 Response:
 ```json

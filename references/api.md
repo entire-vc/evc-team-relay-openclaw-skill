@@ -139,7 +139,7 @@ Query parameters:
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
 | `share_id` | UUID | required | Share UUID for ACL check |
-| `key` | string | `content` | Yjs shared type key name |
+| `key` | string | `contents` | Yjs shared type key name |
 
 Response `200`:
 ```json
@@ -213,14 +213,14 @@ Request body:
 {
   "share_id": "a1b2c3d4-...",
   "content": "# Updated Content\n\nNew text here.",
-  "key": "content"
+  "key": "contents"
 }
 ```
 
 Fields:
 - `share_id` (required) — share UUID for ACL check.
 - `content` (required) — full document text. Replaces the entire document.
-- `key` (optional, default `content`) — Yjs shared type key.
+- `key` (optional, default `contents`) — Yjs shared type key.
 
 Response `200`:
 ```json

@@ -7,7 +7,7 @@
 #   share_id — share UUID (for ACL check)
 #   doc_id   — document ID
 #   content  — text content to write, or "-" to read from stdin
-#   key      — (optional) Yjs key, defaults to "content"
+#   key      — (optional) Yjs key, defaults to "contents"
 # Env: RELAY_CP_URL
 set -euo pipefail
 
@@ -16,7 +16,7 @@ TOKEN="${1:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
 SHARE_ID="${2:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
 DOC_ID="${3:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
 CONTENT_ARG="${4:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
-KEY="${5:-content}"
+KEY="${5:-contents}"
 
 if [ "$CONTENT_ARG" = "-" ]; then
   CONTENT=$(cat)

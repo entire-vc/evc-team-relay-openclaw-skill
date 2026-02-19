@@ -5,7 +5,7 @@
 #   token    — JWT access token
 #   share_id — share UUID (for ACL check)
 #   doc_id   — (optional) document ID, defaults to share_id
-#   key      — (optional) Yjs key, defaults to "content"
+#   key      — (optional) Yjs key, defaults to "contents"
 # Env: RELAY_CP_URL
 # Output: document content as JSON (doc_id, content, format)
 set -euo pipefail
@@ -14,7 +14,7 @@ set -euo pipefail
 TOKEN="${1:?Usage: read.sh <token> <share_id> [doc_id] [key]}"
 SHARE_ID="${2:?Usage: read.sh <token> <share_id> [doc_id] [key]}"
 DOC_ID="${3:-$SHARE_ID}"
-KEY="${4:-content}"
+KEY="${4:-contents}"
 
 curl -sf "${RELAY_CP_URL}/v1/documents/${DOC_ID}/content?share_id=${SHARE_ID}&key=${KEY}" \
   -H "Authorization: Bearer $TOKEN" | jq '.'
