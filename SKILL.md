@@ -40,6 +40,9 @@ scripts/create-file.sh "$TOKEN" <folder_share_id> "new-note.md" "# New content"
 
 # 6. Write to an existing document
 scripts/write.sh "$TOKEN" <share_id> <doc_id> "# Updated content"
+
+# 7. Delete a file from a folder share
+scripts/delete-file.sh "$TOKEN" <folder_share_id> "old-note.md"
 ```
 
 ## Authentication
@@ -241,6 +244,21 @@ This creates the file document AND registers it in the folder's metadata so the 
 
 1. Find a folder share: `GET /v1/shares?kind=folder`
 2. Create file: `POST /v1/documents/{share.id}/files`
+
+### Delete a file from a folder share
+
+```bash
+scripts/delete-file.sh "$TOKEN" <folder_share_id> "old-note.md"
+```
+
+Or via curl:
+
+```bash
+curl -s -X DELETE "$RELAY_CP_URL/v1/documents/{folder_share_id}/files/{file_path}?share_id={folder_share_id}" \
+  -H "Authorization: Bearer $TOKEN" | jq
+```
+
+Removes the file from the folder's metadata. The file disappears from Obsidian on next sync.
 
 ## Error codes
 

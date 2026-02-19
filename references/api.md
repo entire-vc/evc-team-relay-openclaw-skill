@@ -246,6 +246,36 @@ Errors:
 - `422` — missing required fields
 - `502` — relay server unavailable
 
+### DELETE /v1/documents/{doc_id}/files/{file_path}
+
+Delete a file from a folder share. Removes the entry from `filemeta_v0` Y.Map.
+
+Path parameters:
+- `doc_id` — folder share's document ID
+- `file_path` — file name/path to delete (e.g. `notes.md`)
+
+Query parameters:
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `share_id` | UUID | required | Share UUID for ACL check |
+
+Response `200`:
+```json
+{
+  "path": "notes.md",
+  "status": "ok"
+}
+```
+
+Access: editor or owner only. Only works on `folder` shares.
+
+Errors:
+- `400` — invalid `share_id` or not a folder share
+- `401` — no/expired token
+- `403` — no write access
+- `404` — file not found in folder, or share not found
+- `502` — relay server unavailable
+
 ### PUT /v1/documents/{doc_id}/content
 
 Write (replace) text content in a Yjs document.
