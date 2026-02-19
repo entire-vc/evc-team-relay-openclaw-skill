@@ -29,10 +29,13 @@ TOKEN=$(scripts/auth.sh)
 # 2. List shares to find available documents
 scripts/list-shares.sh "$TOKEN"
 
-# 3. Read a document
+# 3. Read a document (doc share)
 scripts/read.sh "$TOKEN" <share_id> <doc_id>
 
-# 4. Write a document
+# 4. List files in a folder share
+scripts/list-files.sh "$TOKEN" <share_id>
+
+# 5. Write a document
 scripts/write.sh "$TOKEN" <share_id> <doc_id> "# New content"
 ```
 
@@ -109,6 +112,36 @@ For `folder` shares: each file inside has its own `doc_id` (typically the share_
 
 Filter options: `?kind=doc`, `?owned_only=true`, `?member_only=true`, `?skip=0&limit=50`.
 
+## Listing files in a folder share
+
+Folder shares store their file listing in a `Y.Map("filemeta_v0")` structure. Before reading individual documents inside a folder share, list the files to discover their `doc_id` values.
+
+```bash
+scripts/list-files.sh "$TOKEN" <share_id>
+```
+
+Or directly via curl:
+
+```bash
+curl -s "$RELAY_CP_URL/v1/documents/{share_id}/files?share_id={share_id}" \
+  -H "Authorization: Bearer $TOKEN" | jq
+```
+
+Response:
+```json
+{
+  "doc_id": "e5f6g7h8-...",
+  "files": {
+    "meeting-notes.md": {"id": "abc123", "type": "markdown", "hash": "h1a2b3c4"},
+    "project-plan.md": {"id": "def456", "type": "markdown", "hash": "h5e6f7g8"}
+  }
+}
+```
+
+Each key is the file's virtual path within the folder. Use the file's `id` as `doc_id` to read its content with the `/content` endpoint. The `share_id` for the content request is the folder share's ID.
+
+Access: requires at least `viewer` role or ownership.
+
 ## Reading documents
 
 ```bash
@@ -172,6 +205,13 @@ Access: requires `editor` role or ownership. Viewers cannot write.
 1. List shares: `GET /v1/shares?kind=doc`
 2. Find the share where `path` matches (e.g. `Projects/meeting-notes.md`)
 3. Read content: `GET /v1/documents/{share.id}/content?share_id={share.id}`
+
+### Read a file from a folder share
+
+1. Find the folder share: `GET /v1/shares?kind=folder`
+2. List files: `GET /v1/documents/{share.id}/files?share_id={share.id}`
+3. Find the file entry by its virtual path (e.g. `meeting-notes.md`)
+4. Read content using the file's `id` as doc_id: `GET /v1/documents/{file.id}/content?share_id={share.id}`
 
 ### Update a note
 

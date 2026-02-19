@@ -160,6 +160,47 @@ Errors:
 - `422` — missing `share_id`
 - `502` — relay server unavailable
 
+### GET /v1/documents/{doc_id}/files
+
+List files stored in a folder share's `filemeta_v0` Y.Map.
+
+Path parameters:
+- `doc_id` — document identifier (for folder shares, equals `share_id`)
+
+Query parameters:
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `share_id` | UUID | required | Share UUID for ACL check |
+
+Response `200`:
+```json
+{
+  "doc_id": "e5f6g7h8-...",
+  "files": {
+    "meeting-notes.md": {"id": "abc123", "type": "markdown", "hash": "h1a2b3c4"},
+    "project-plan.md": {"id": "def456", "type": "markdown", "hash": "h5e6f7g8"}
+  }
+}
+```
+
+Fields:
+- `doc_id` — the document ID queried (same as `share_id` for folder shares).
+- `files` — map of virtual file paths to metadata dicts. Keys are vault-relative paths within the folder. Values are Y.Map entries (shape depends on plugin version; typically includes `id`, `type`, `hash`).
+
+Use each file's `id` value as the `doc_id` for `GET /v1/documents/{doc_id}/content` to read its text.
+
+Returns an empty `files` dict if the folder share has no files synced yet.
+
+Access: viewer, editor, or owner of the share.
+
+Errors:
+- `400` — invalid `share_id` format
+- `401` — no/expired token
+- `403` — no read access
+- `404` — share not found
+- `422` — missing `share_id`
+- `502` — relay server unavailable
+
 ### PUT /v1/documents/{doc_id}/content
 
 Write (replace) text content in a Yjs document.
@@ -214,7 +255,7 @@ Server metadata. **No auth required.**
 Response `200`:
 ```json
 {
-  "name": "My Relay Server",
+  "name": "Relay Server",
   "version": "2.9.0",
   "relay_url": "wss://...",
   "features": { ... }
