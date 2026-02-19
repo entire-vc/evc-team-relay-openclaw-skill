@@ -201,6 +201,51 @@ Errors:
 - `422` — missing `share_id`
 - `502` — relay server unavailable
 
+### POST /v1/documents/{doc_id}/files
+
+Create a new file inside a folder share. Generates a document, writes content, and registers the file in the folder's `filemeta_v0` Y.Map.
+
+Path parameters:
+- `doc_id` — folder share's document ID (equals `share_id` for folder shares)
+
+Request body:
+```json
+{
+  "share_id": "e5f6g7h8-...",
+  "path": "new-note.md",
+  "content": "# New Note\n\nContent here.",
+  "key": "contents"
+}
+```
+
+Fields:
+- `share_id` (required) — folder share UUID for ACL check.
+- `path` (required) — file name/path within the folder (e.g. `notes.md`).
+- `content` (optional, default `""`) — initial text content.
+- `key` (optional, default `contents`) — Yjs shared type key.
+
+Response `201`:
+```json
+{
+  "doc_id": "generated-uuid",
+  "path": "new-note.md",
+  "status": "ok",
+  "length": 30
+}
+```
+
+The returned `doc_id` can be used with `GET/PUT /documents/{doc_id}/content` for subsequent reads/writes. The file will appear in the Obsidian plugin on next sync.
+
+Access: editor or owner only. Only works on `folder` shares (not `doc` shares).
+
+Errors:
+- `400` — invalid `share_id`, not a folder share, or empty path
+- `401` — no/expired token
+- `403` — no write access
+- `404` — share not found
+- `422` — missing required fields
+- `502` — relay server unavailable
+
 ### PUT /v1/documents/{doc_id}/content
 
 Write (replace) text content in a Yjs document.

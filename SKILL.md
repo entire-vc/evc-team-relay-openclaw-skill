@@ -35,8 +35,11 @@ scripts/read.sh "$TOKEN" <share_id> <doc_id>
 # 4. List files in a folder share
 scripts/list-files.sh "$TOKEN" <share_id>
 
-# 5. Write a document
-scripts/write.sh "$TOKEN" <share_id> <doc_id> "# New content"
+# 5. Create a new file in a folder share
+scripts/create-file.sh "$TOKEN" <folder_share_id> "new-note.md" "# New content"
+
+# 6. Write to an existing document
+scripts/write.sh "$TOKEN" <share_id> <doc_id> "# Updated content"
 ```
 
 ## Authentication
@@ -219,12 +222,25 @@ Access: requires `editor` role or ownership. Viewers cannot write.
 2. Modify the text (append, edit sections, etc.)
 3. Write back: `PUT /v1/documents/{doc_id}/content`
 
-### Create a new note
+### Create a new file in a folder share
 
-New notes are created by writing to a new `doc_id` within an existing folder share:
+```bash
+scripts/create-file.sh "$TOKEN" <folder_share_id> "new-note.md" "# New Content"
+```
+
+Or via curl:
+
+```bash
+curl -s -X POST "$RELAY_CP_URL/v1/documents/{folder_share_id}/files" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"share_id": "folder-share-id", "path": "new-note.md", "content": "# New Content"}' | jq
+```
+
+This creates the file document AND registers it in the folder's metadata so the Obsidian plugin picks it up.
 
 1. Find a folder share: `GET /v1/shares?kind=folder`
-2. Write content using a new doc_id (the Relay will create the Yjs document on first write)
+2. Create file: `POST /v1/documents/{share.id}/files`
 
 ## Error codes
 
