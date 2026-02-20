@@ -1,5 +1,9 @@
 # EVC Team Relay — OpenClaw Skill
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-skill-FF5A2D)](https://github.com/openclaw/openclaw)
+[![Entire VC](https://img.shields.io/badge/Entire_VC-toolbox-525769)](https://entire.vc)
+
 **Give your AI agent read/write access to your Obsidian vault.**
 
 > Your agent reads your notes, creates new ones, and stays in sync — all through the Team Relay API.
@@ -52,7 +56,7 @@ chmod +x ~/.openclaw/skills/evc-team-relay/scripts/*.sh
 
 ## Configure
 
-Set environment variables in your OpenClaw config:
+Set environment variables in your OpenClaw config (`~/.openclaw/openclaw.json`):
 
 ```json
 {
@@ -66,6 +70,21 @@ Set environment variables in your OpenClaw config:
         }
       }
     }
+  }
+}
+```
+
+Then add the skill to your agent:
+
+```json
+{
+  "agents": {
+    "list": [
+      {
+        "id": "main",
+        "skills": ["evc-team-relay"]
+      }
+    ]
   }
 }
 ```
@@ -91,6 +110,11 @@ Set environment variables in your OpenClaw config:
 ```bash
 cd ~/.openclaw/skills/evc-team-relay
 
+# Set env
+export RELAY_CP_URL="https://cp.yourdomain.com"
+export RELAY_EMAIL="agent@yourdomain.com"
+export RELAY_PASSWORD="your-password"
+
 # Authenticate
 TOKEN=$(bash scripts/auth.sh)
 
@@ -102,21 +126,42 @@ bash scripts/list-files.sh "$TOKEN" "<share_id>"
 
 # Read a note
 bash scripts/read.sh "$TOKEN" "<share_id>" "<doc_id>"
+
+# Write a note
+echo "# Hello from my agent" | bash scripts/write.sh "$TOKEN" "<share_id>" "<doc_id>" -
 ```
+
+---
+
+## How It Works
+
+```
+┌─────────────┐     REST API      ┌──────────────┐     Yjs CRDT      ┌──────────────┐
+│  AI Agent   │ ◄──────────────► │  Team Relay  │ ◄──────────────► │   Obsidian   │
+│ (OpenClaw)  │   read / write   │   Server     │    real-time     │    Client    │
+└─────────────┘                  └──────────────┘      sync         └──────────────┘
+```
+
+The skill talks to Team Relay's REST API. Team Relay stores documents as Yjs CRDTs and syncs them to connected Obsidian clients in real-time. Changes made by the agent appear in Obsidian instantly — and vice versa.
 
 ---
 
 ## Part of the Entire VC Toolbox
 
 | Product | What it does | Link |
-|---|---|---|
-| **Local Sync** | vault ↔ local folders, solo | [repo](https://github.com/entire-vc/evc-local-sync-plugin) |
-| **Team Relay Server** | self-hosted collaboration infrastructure | [repo](https://github.com/entire-vc/evc-team-relay) |
+|---------|-------------|------|
+| **Local Sync** | Vault ↔ AI dev tools sync | [repo](https://github.com/entire-vc/evc-local-sync-plugin) |
+| **Team Relay** | Self-hosted collaboration server | [repo](https://github.com/entire-vc/evc-team-relay) |
 | **Team Relay Plugin** | Obsidian plugin for Team Relay | [repo](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) |
-| **OpenClaw Skill** (you are here) | AI agent ↔ vault access | this repo |
+| **Spark MCP** | MCP server for AI workflow catalog | [repo](https://github.com/entire-vc/evc-spark-mcp) |
+| **OpenClaw Skill** ← you are here | AI agent ↔ vault access | this repo |
 
----
+## Community
+
+- 🌐 [entire.vc](https://entire.vc)
+- 💬 [Discussions](https://github.com/entire-vc/.github/discussions)
+- 📧 in@entire.vc
 
 ## License
 
-MIT — Copyright (c) 2025 Entire VC
+MIT — Copyright (c) 2026 Entire VC
