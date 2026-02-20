@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Write document content to Relay.
+# Write document content to Relay (doc shares only).
+# WARNING: For folder shares, use upsert-file.sh instead!
+#          write.sh does NOT register files in folder metadata —
+#          new files written this way will be invisible to Obsidian.
+#
 # Usage: scripts/write.sh <token> <share_id> <doc_id> <content> [key]
 #    or: echo "content" | scripts/write.sh <token> <share_id> <doc_id> - [key]
 # Args:

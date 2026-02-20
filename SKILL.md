@@ -35,15 +35,32 @@ scripts/read.sh "$TOKEN" <share_id> <doc_id>
 # 4. List files in a folder share
 scripts/list-files.sh "$TOKEN" <share_id>
 
-# 5. Create a new file in a folder share
-scripts/create-file.sh "$TOKEN" <folder_share_id> "new-note.md" "# New content"
+# 5. Create or update a file in a folder share (RECOMMENDED)
+scripts/upsert-file.sh "$TOKEN" <folder_share_id> "note.md" "# Content"
 
-# 6. Write to an existing document
-scripts/write.sh "$TOKEN" <share_id> <doc_id> "# Updated content"
-
-# 7. Delete a file from a folder share
+# 6. Delete a file from a folder share
 scripts/delete-file.sh "$TOKEN" <folder_share_id> "old-note.md"
 ```
+
+## Critical: folder shares vs doc shares
+
+There are two kinds of shares:
+
+- **`doc` shares** — single documents. The `share_id` IS the `doc_id`. Use `read.sh` / `write.sh` directly.
+- **`folder` shares** — contain multiple files. Each file has its own `doc_id` stored in the folder's metadata registry (`filemeta_v0`).
+
+**For folder shares, ALWAYS use `upsert-file.sh`** to create or update files. This script:
+1. Checks if the file already exists in the folder metadata
+2. If it exists → updates content via `PUT /content`
+3. If it's new → creates the file AND registers it in folder metadata via `POST /files`
+
+**Why this matters**: Files in folder shares MUST be registered in `filemeta_v0` to be visible in Obsidian. Using `write.sh` directly on a folder share writes content to the relay but does NOT register the file — the Obsidian plugin will never see it.
+
+| Operation | Doc share | Folder share |
+|-----------|-----------|--------------|
+| Read | `read.sh <token> <share_id>` | `read.sh <token> <share_id> <file_doc_id>` |
+| Create/Update | `write.sh <token> <share_id> <doc_id> <content>` | **`upsert-file.sh <token> <share_id> <file_path> <content>`** |
+| Delete | N/A | `delete-file.sh <token> <share_id> <file_path>` |
 
 ## Authentication
 
@@ -114,13 +131,13 @@ Key fields:
 - **`user_role`** — `viewer` (read-only), `editor` (read-write), or `null` (owner)
 
 For `doc` shares: `share_id` is used directly as the `doc_id` in document operations.
-For `folder` shares: each file inside has its own `doc_id` (typically the share_id + file path hash).
+For `folder` shares: each file inside has its own `doc_id` (discover via `list-files.sh`).
 
 Filter options: `?kind=doc`, `?owned_only=true`, `?member_only=true`, `?skip=0&limit=50`.
 
 ## Listing files in a folder share
 
-Folder shares store their file listing in a `Y.Map("filemeta_v0")` structure. Before reading individual documents inside a folder share, list the files to discover their `doc_id` values.
+Before reading individual documents inside a folder share, list the files to discover their `doc_id` values.
 
 ```bash
 scripts/list-files.sh "$TOKEN" <share_id>
@@ -175,6 +192,26 @@ Access: requires at least `viewer` role or ownership.
 
 ## Writing documents
 
+### For folder shares — use upsert-file.sh (RECOMMENDED)
+
+```bash
+# Create or update — auto-detects which operation is needed
+scripts/upsert-file.sh "$TOKEN" <folder_share_id> "note.md" "# Updated content"
+
+# Pipe content from stdin
+echo "# Content" | scripts/upsert-file.sh "$TOKEN" <folder_share_id> "note.md" -
+```
+
+Response includes an `operation` field: `"created"` or `"updated"`.
+
+### For doc shares — use write.sh
+
+```bash
+scripts/write.sh "$TOKEN" <share_id> <doc_id> "# Updated Notes"
+```
+
+Or directly via curl:
+
 ```bash
 curl -s -X PUT "$RELAY_CP_URL/v1/documents/{doc_id}/content" \
   -H "Authorization: Bearer $TOKEN" \
@@ -215,35 +252,24 @@ Access: requires `editor` role or ownership. Viewers cannot write.
 ### Read a file from a folder share
 
 1. Find the folder share: `GET /v1/shares?kind=folder`
-2. List files: `GET /v1/documents/{share.id}/files?share_id={share.id}`
+2. List files: `scripts/list-files.sh "$TOKEN" <share_id>`
 3. Find the file entry by its virtual path (e.g. `meeting-notes.md`)
-4. Read content using the file's `id` as doc_id: `GET /v1/documents/{file.id}/content?share_id={share.id}`
+4. Read content using the file's `id` as doc_id: `scripts/read.sh "$TOKEN" <share_id> <file_id>`
 
-### Update a note
+### Create or update a file in a folder share
 
-1. Read current content
+Use `upsert-file.sh` — it handles both cases automatically:
+
+```bash
+# Always works, whether the file exists or not
+scripts/upsert-file.sh "$TOKEN" <folder_share_id> "note.md" "# Content"
+```
+
+### Update an existing doc share
+
+1. Read current content: `scripts/read.sh "$TOKEN" <share_id>`
 2. Modify the text (append, edit sections, etc.)
-3. Write back: `PUT /v1/documents/{doc_id}/content`
-
-### Create a new file in a folder share
-
-```bash
-scripts/create-file.sh "$TOKEN" <folder_share_id> "new-note.md" "# New Content"
-```
-
-Or via curl:
-
-```bash
-curl -s -X POST "$RELAY_CP_URL/v1/documents/{folder_share_id}/files" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"share_id": "folder-share-id", "path": "new-note.md", "content": "# New Content"}' | jq
-```
-
-This creates the file document AND registers it in the folder's metadata so the Obsidian plugin picks it up.
-
-1. Find a folder share: `GET /v1/shares?kind=folder`
-2. Create file: `POST /v1/documents/{share.id}/files`
+3. Write back: `scripts/write.sh "$TOKEN" <share_id> <share_id> "$NEW_CONTENT"`
 
 ### Delete a file from a folder share
 
