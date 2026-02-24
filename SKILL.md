@@ -29,38 +29,54 @@ TOKEN=$(scripts/auth.sh)
 # 2. List shares to find available documents
 scripts/list-shares.sh "$TOKEN"
 
-# 3. Read a document (doc share)
-scripts/read.sh "$TOKEN" <share_id> <doc_id>
+# 3. Read a file from a folder share BY PATH (most common)
+scripts/read-file.sh "$TOKEN" <folder_share_id> "Marketing/plan.md"
 
-# 4. List files in a folder share
-scripts/list-files.sh "$TOKEN" <share_id>
-
-# 5. Create or update a file in a folder share (RECOMMENDED)
+# 4. Create or update a file in a folder share
 scripts/upsert-file.sh "$TOKEN" <folder_share_id> "note.md" "# Content"
+
+# 5. List all files in a folder share
+scripts/list-files.sh "$TOKEN" <folder_share_id>
 
 # 6. Delete a file from a folder share
 scripts/delete-file.sh "$TOKEN" <folder_share_id> "old-note.md"
+
+# 7. Read a doc share (single document, share_id = doc_id)
+scripts/read.sh "$TOKEN" <share_id>
+
+# 8. Write to a doc share
+scripts/write.sh "$TOKEN" <share_id> <share_id> "# Updated content"
 ```
 
-## Critical: folder shares vs doc shares
+## Two kinds of shares
 
-There are two kinds of shares:
+| | Doc share | Folder share |
+|--|-----------|--------------|
+| **Contains** | Single document | Multiple files |
+| **doc_id** | Same as share_id | Each file has its own doc_id (in folder metadata) |
+| **Read** | `read.sh <token> <share_id>` | **`read-file.sh <token> <share_id> "path/to/file.md"`** |
+| **Write** | `write.sh <token> <share_id> <share_id> <content>` | **`upsert-file.sh <token> <share_id> "path" <content>`** |
+| **Delete** | N/A | `delete-file.sh <token> <share_id> "path"` |
 
-- **`doc` shares** — single documents. The `share_id` IS the `doc_id`. Use `read.sh` / `write.sh` directly.
-- **`folder` shares** — contain multiple files. Each file has its own `doc_id` stored in the folder's metadata registry (`filemeta_v0`).
+**Most shares are folder shares.** Use `read-file.sh` and `upsert-file.sh` — they handle path resolution automatically.
 
-**For folder shares, ALWAYS use `upsert-file.sh`** to create or update files. This script:
-1. Checks if the file already exists in the folder metadata
-2. If it exists → updates content via `PUT /content`
-3. If it's new → creates the file AND registers it in folder metadata via `POST /files`
+> **Warning**: `write.sh` does NOT work for folder shares — it writes content but does not register the file in folder metadata, so Obsidian will never see it. The script detects folder shares and refuses with an error.
 
-**Why this matters**: Files in folder shares MUST be registered in `filemeta_v0` to be visible in Obsidian. Using `write.sh` directly on a folder share writes content to the relay but does NOT register the file — the Obsidian plugin will never see it.
+## Scripts reference
 
-| Operation | Doc share | Folder share |
-|-----------|-----------|--------------|
-| Read | `read.sh <token> <share_id>` | `read.sh <token> <share_id> <file_doc_id>` |
-| Create/Update | `write.sh <token> <share_id> <doc_id> <content>` | **`upsert-file.sh <token> <share_id> <file_path> <content>`** |
-| Delete | N/A | `delete-file.sh <token> <share_id> <file_path>` |
+| Script | Purpose | Args |
+|--------|---------|------|
+| `auth.sh` | Get JWT token | — |
+| `list-shares.sh` | List all shares | `<token>` |
+| `list-files.sh` | List files in folder share | `<token> <share_id>` |
+| **`read-file.sh`** | **Read file by path (folder share)** | `<token> <share_id> <file_path>` |
+| `read.sh` | Read by doc_id (low-level) | `<token> <share_id> [doc_id]` |
+| **`upsert-file.sh`** | **Create/update file (folder share)** | `<token> <share_id> <file_path> <content>` |
+| `write.sh` | Write by doc_id (doc shares only) | `<token> <share_id> <doc_id> <content>` |
+| `delete-file.sh` | Delete file from folder share | `<token> <share_id> <file_path>` |
+| `create-file.sh` | Create new file (low-level) | `<token> <share_id> <file_path> <content>` |
+
+**Bold = recommended for most use cases.**
 
 ## Authentication
 
@@ -125,29 +141,17 @@ Response (array):
 ```
 
 Key fields:
-- **`id`** — share UUID, used as `share_id` parameter for document operations
+- **`id`** — share UUID, used as `share_id` in all operations
 - **`kind`** — `doc` (single file) or `folder` (directory)
 - **`path`** — Obsidian vault-relative path
 - **`user_role`** — `viewer` (read-only), `editor` (read-write), or `null` (owner)
-
-For `doc` shares: `share_id` is used directly as the `doc_id` in document operations.
-For `folder` shares: each file inside has its own `doc_id` (discover via `list-files.sh`).
 
 Filter options: `?kind=doc`, `?owned_only=true`, `?member_only=true`, `?skip=0&limit=50`.
 
 ## Listing files in a folder share
 
-Before reading individual documents inside a folder share, list the files to discover their `doc_id` values.
-
 ```bash
 scripts/list-files.sh "$TOKEN" <share_id>
-```
-
-Or directly via curl:
-
-```bash
-curl -s "$RELAY_CP_URL/v1/documents/{share_id}/files?share_id={share_id}" \
-  -H "Authorization: Bearer $TOKEN" | jq
 ```
 
 Response:
@@ -155,44 +159,45 @@ Response:
 {
   "doc_id": "e5f6g7h8-...",
   "files": {
-    "meeting-notes.md": {"id": "abc123", "type": "markdown", "hash": "h1a2b3c4"},
-    "project-plan.md": {"id": "def456", "type": "markdown", "hash": "h5e6f7g8"}
+    "meeting-notes.md": {"doc_id": "abc123-...", "type": "markdown"},
+    "project-plan.md": {"doc_id": "def456-...", "type": "markdown"}
   }
 }
 ```
 
-Each key is the file's virtual path within the folder. Use the file's `id` as `doc_id` to read its content with the `/content` endpoint. The `share_id` for the content request is the folder share's ID.
+Each key is the file's path within the folder. The **`doc_id`** field is the document identifier used for content operations. The `share_id` for content requests is always the folder share's ID.
 
-Access: requires at least `viewer` role or ownership.
+> **Note**: The API response uses `id` as the field name. This is the same as `doc_id` — use it wherever `doc_id` is needed.
 
-## Reading documents
+## Reading files
+
+### By path (recommended for folder shares)
 
 ```bash
-curl -s "$RELAY_CP_URL/v1/documents/{doc_id}/content?share_id={share_id}" \
-  -H "Authorization: Bearer $TOKEN" | jq
+scripts/read-file.sh "$TOKEN" <folder_share_id> "Marketing/plan.md"
 ```
 
-Parameters:
-- **`doc_id`** (path) — document identifier. For `doc` shares, this equals the `share_id`.
-- **`share_id`** (query, required) — share UUID for ACL check.
-- **`key`** (query, optional, default: `contents`) — Yjs shared type key.
-
-Response:
+This resolves the path to a doc_id internally and returns:
 ```json
 {
-  "doc_id": "a1b2c3d4-...",
-  "content": "# Meeting Notes\n\nDiscussed project timeline...",
-  "format": "text"
+  "doc_id": "abc123-...",
+  "content": "# Marketing Plan\n\nContent here...",
+  "format": "text",
+  "path": "Marketing/plan.md"
 }
 ```
 
-The `content` field contains the full document text (Markdown).
+### By doc_id (low-level)
 
-Access: requires at least `viewer` role or ownership.
+```bash
+scripts/read.sh "$TOKEN" <share_id> [doc_id] [key]
+```
 
-## Writing documents
+For doc shares, omit doc_id (defaults to share_id). For folder shares, pass the file's doc_id from `list-files.sh`.
 
-### For folder shares — use upsert-file.sh (RECOMMENDED)
+## Writing files
+
+### Folder shares — use upsert-file.sh
 
 ```bash
 # Create or update — auto-detects which operation is needed
@@ -204,87 +209,39 @@ echo "# Content" | scripts/upsert-file.sh "$TOKEN" <folder_share_id> "note.md" -
 
 Response includes an `operation` field: `"created"` or `"updated"`.
 
-### For doc shares — use write.sh
+### Doc shares — use write.sh
 
 ```bash
-scripts/write.sh "$TOKEN" <share_id> <doc_id> "# Updated Notes"
+scripts/write.sh "$TOKEN" <share_id> <share_id> "# Updated Notes"
 ```
 
-Or directly via curl:
-
-```bash
-curl -s -X PUT "$RELAY_CP_URL/v1/documents/{doc_id}/content" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "share_id": "a1b2c3d4-...",
-    "content": "# Updated Notes\n\nNew content here.",
-    "key": "contents"
-  }' | jq
-```
-
-Body fields:
-- **`share_id`** (required) — share UUID for ACL check.
-- **`content`** (required) — full document text to write (replaces entire document).
-- **`key`** (optional, default: `contents`) — Yjs shared type key.
-
-Response:
-```json
-{
-  "doc_id": "a1b2c3d4-...",
-  "status": "ok",
-  "length": 42
-}
-```
-
-Access: requires `editor` role or ownership. Viewers cannot write.
-
-**Important**: PUT replaces the entire document content. To append, first read the current content, modify it, then write back.
+> **write.sh refuses folder shares** — if you accidentally pass a folder share_id as doc_id, it detects this and exits with an error directing you to upsert-file.sh.
 
 ## Common workflows
 
-### Read a specific note by path
+### Read a specific note by path (most common)
 
-1. List shares: `GET /v1/shares?kind=doc`
-2. Find the share where `path` matches (e.g. `Projects/meeting-notes.md`)
-3. Read content: `GET /v1/documents/{share.id}/content?share_id={share.id}`
+```bash
+# If you know the folder share_id:
+scripts/read-file.sh "$TOKEN" <folder_share_id> "Marketing/docs/plan.md"
 
-### Read a file from a folder share
+# If you need to find the share first:
+scripts/list-shares.sh "$TOKEN"  # find the folder share
+scripts/read-file.sh "$TOKEN" <share_id> "path/to/file.md"
+```
 
-1. Find the folder share: `GET /v1/shares?kind=folder`
-2. List files: `scripts/list-files.sh "$TOKEN" <share_id>`
-3. Find the file entry by its virtual path (e.g. `meeting-notes.md`)
-4. Read content using the file's `id` as doc_id: `scripts/read.sh "$TOKEN" <share_id> <file_id>`
-
-### Create or update a file in a folder share
-
-Use `upsert-file.sh` — it handles both cases automatically:
+### Create or update a file
 
 ```bash
 # Always works, whether the file exists or not
 scripts/upsert-file.sh "$TOKEN" <folder_share_id> "note.md" "# Content"
 ```
 
-### Update an existing doc share
-
-1. Read current content: `scripts/read.sh "$TOKEN" <share_id>`
-2. Modify the text (append, edit sections, etc.)
-3. Write back: `scripts/write.sh "$TOKEN" <share_id> <share_id> "$NEW_CONTENT"`
-
-### Delete a file from a folder share
+### Delete a file
 
 ```bash
 scripts/delete-file.sh "$TOKEN" <folder_share_id> "old-note.md"
 ```
-
-Or via curl:
-
-```bash
-curl -s -X DELETE "$RELAY_CP_URL/v1/documents/{folder_share_id}/files/{file_path}?share_id={folder_share_id}" \
-  -H "Authorization: Bearer $TOKEN" | jq
-```
-
-Removes the file from the folder's metadata. The file disappears from Obsidian on next sync.
 
 ## Error codes
 
@@ -293,9 +250,18 @@ Removes the file from the folder's metadata. The file disappears from Obsidian o
 | 400 | Invalid share_id format |
 | 401 | Missing or expired token — re-authenticate |
 | 403 | Insufficient permissions (viewer trying to write, or non-member) |
-| 404 | Share not found |
+| 404 | Share or file not found (check path spelling, use list-files.sh to verify) |
 | 422 | Missing required field (share_id, content) |
 | 502 | Relay server unavailable — retry later |
+
+## Terminology
+
+| Term | Meaning |
+|------|---------|
+| `share_id` | UUID of a share (doc or folder). Used for ACL checks in all requests. |
+| `doc_id` | UUID of an individual document. For doc shares, equals share_id. For folder shares, each file has its own doc_id. |
+| `id` | Same as `doc_id` — the API response field name. Use interchangeably. |
+| `file_path` | Relative path within a folder share (e.g. `"Marketing/plan.md"`). |
 
 ## References
 

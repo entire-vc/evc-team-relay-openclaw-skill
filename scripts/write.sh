@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Write document content to Relay (doc shares only).
-# WARNING: For folder shares, use upsert-file.sh instead!
-#          write.sh does NOT register files in folder metadata —
-#          new files written this way will be invisible to Obsidian.
+#
+# IMPORTANT: This script detects folder shares and refuses to write.
+# For folder shares, use upsert-file.sh instead — it properly registers
+# files in folder metadata so Obsidian can see them.
 #
 # Usage: scripts/write.sh <token> <share_id> <doc_id> <content> [key]
 #    or: echo "content" | scripts/write.sh <token> <share_id> <doc_id> - [key]
@@ -21,6 +22,26 @@ SHARE_ID="${2:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
 DOC_ID="${3:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
 CONTENT_ARG="${4:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
 KEY="${5:-contents}"
+
+# Safety check: detect folder shares and refuse
+# If share_id == doc_id AND the share has a files endpoint, it's likely a folder share
+# being used incorrectly (user passing share_id as doc_id)
+if [ "$SHARE_ID" = "$DOC_ID" ]; then
+  # Check if this is a folder share by trying to list files
+  FILES_CHECK=$(curl -sf "${RELAY_CP_URL}/v1/documents/${SHARE_ID}/files?share_id=${SHARE_ID}" \
+    -H "Authorization: Bearer $TOKEN" 2>/dev/null || echo "")
+  if [ -n "$FILES_CHECK" ]; then
+    FILE_COUNT=$(echo "$FILES_CHECK" | jq '.files | length' 2>/dev/null || echo "0")
+    if [ "$FILE_COUNT" -gt "0" ] || echo "$FILES_CHECK" | jq -e '.files' >/dev/null 2>&1; then
+      echo "Error: this looks like a folder share (has file metadata)." >&2
+      echo "write.sh does NOT work for folder shares — files won't appear in Obsidian." >&2
+      echo "" >&2
+      echo "Use upsert-file.sh instead:" >&2
+      echo "  scripts/upsert-file.sh \"$TOKEN\" \"$SHARE_ID\" \"filename.md\" \"content\"" >&2
+      exit 1
+    fi
+  fi
+fi
 
 if [ "$CONTENT_ARG" = "-" ]; then
   CONTENT=$(cat)
