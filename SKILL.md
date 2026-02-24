@@ -12,6 +12,9 @@ description: >
 
 REST API skill for reading and writing collaborative Obsidian vault documents via EVC Team Relay.
 
+> **Note**: This is the legacy bash-scripts interface. For MCP-compatible AI tools
+> (Claude Code, Codex CLI, OpenCode), use the MCP server instead — see [README.md](README.md).
+
 ## Environment variables
 
 | Variable | Required | Description |

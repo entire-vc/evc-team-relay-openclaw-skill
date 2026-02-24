@@ -1,0 +1,20 @@
+{
+  "_comment": "Choose ONE of: local (stdio) or remote (url). Delete the other.",
+
+  "mcp_servers": {
+    "evc-relay-local": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/evc-team-relay-openclaw-skill", "relay_mcp.py"],
+      "env": {
+        "RELAY_CP_URL": "${RELAY_CP_URL}",
+        "RELAY_EMAIL": "${RELAY_EMAIL}",
+        "RELAY_PASSWORD": "${RELAY_PASSWORD}"
+      }
+    },
+    "evc-relay-remote": {
+      "type": "url",
+      "url": "http://localhost:8888/mcp"
+    }
+  }
+}
