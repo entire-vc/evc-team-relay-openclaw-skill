@@ -1,7 +1,6 @@
-# EVC Team Relay — MCP Server & OpenClaw Skill
+# EVC Team Relay — OpenClaw Skill
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![MCP](https://img.shields.io/badge/MCP-server-4A90D9)](https://modelcontextprotocol.io)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-skill-FF5A2D)](https://github.com/openclaw/openclaw)
 [![Entire VC](https://img.shields.io/badge/Entire_VC-toolbox-525769)](https://entire.vc)
 
@@ -9,144 +8,127 @@
 
 > Your agent reads your notes, creates new ones, and stays in sync — all through the Team Relay API.
 
-Works with **Claude Code**, **Codex CLI**, **OpenCode**, **OpenClaw**, and any MCP-compatible client.
+---
+
+## What It Does
+
+This [OpenClaw](https://github.com/openclaw/openclaw) skill connects your AI agent to Obsidian notes managed by [EVC Team Relay](https://github.com/entire-vc/evc-team-relay):
+
+- **List** shared folders and documents
+- **Read** note content as Markdown
+- **Create** new notes in shared folders
+- **Write** updates to existing notes
+- **Delete** notes when no longer needed
+
+Your agent works with the same notes your team edits in Obsidian — no copy/paste, no stale context.
 
 ---
 
-## Quick Start (MCP)
+## Use Cases
 
-### 1. Install
+### AI-Assisted Knowledge Management
+Your agent reads specs, updates status docs, creates meeting notes — all directly in your vault.
+
+### Agent-to-Human Handoff
+Agent writes analysis/research into a shared folder → you review in Obsidian → refine → agent picks up changes.
+
+### Automated Documentation
+Agent monitors code changes and keeps vault docs up to date. Combined with [Local Sync](https://github.com/entire-vc/evc-local-sync-plugin), it closes the loop: code → repo docs → vault → agent → code.
+
+---
+
+## Prerequisites
+
+- [OpenClaw](https://github.com/openclaw/openclaw) installed
+- A running [EVC Team Relay](https://github.com/entire-vc/evc-team-relay) instance (self-hosted or [hosted](https://entire.vc))
+- A user account on the Relay control plane with access to shared folders
+- `curl` and `jq` on the host
+
+---
+
+## Install
 
 ```bash
-git clone https://github.com/entire-vc/evc-team-relay-openclaw-skill.git
-cd evc-team-relay-openclaw-skill
-uv sync   # or: pip install .
+# Copy to OpenClaw skills directory
+cp -r . ~/.openclaw/skills/evc-team-relay/
+chmod +x ~/.openclaw/skills/evc-team-relay/scripts/*.sh
 ```
 
-### 2. Set environment variables
+## Configure
+
+Set environment variables in your OpenClaw config (`~/.openclaw/openclaw.json`):
+
+```json
+{
+  "skills": {
+    "entries": {
+      "evc-team-relay": {
+        "env": {
+          "RELAY_CP_URL": "https://cp.yourdomain.com",
+          "RELAY_EMAIL": "agent@yourdomain.com",
+          "RELAY_PASSWORD": "your-password"
+        }
+      }
+    }
+  }
+}
+```
+
+Then add the skill to your agent:
+
+```json
+{
+  "agents": {
+    "list": [
+      {
+        "id": "main",
+        "skills": ["evc-team-relay"]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Scripts
+
+| Script | What it does |
+|--------|-------------|
+| `auth.sh` | Authenticate and get JWT token |
+| `list-shares.sh` | List all accessible shared folders |
+| `list-files.sh` | List files in a shared folder |
+| `read.sh` | Read note content |
+| `write.sh` | Update existing note |
+| `create-file.sh` | Create new note in a folder |
+| `delete-file.sh` | Delete a note |
+
+---
+
+## Quick Test
 
 ```bash
+cd ~/.openclaw/skills/evc-team-relay
+
+# Set env
 export RELAY_CP_URL="https://cp.yourdomain.com"
 export RELAY_EMAIL="agent@yourdomain.com"
 export RELAY_PASSWORD="your-password"
-```
 
-### 3. Add to your AI tool
+# Authenticate
+TOKEN=$(bash scripts/auth.sh)
 
-**Claude Code** — add to `.mcp.json` (project or `~/.claude/.mcp.json`):
+# List shared folders
+bash scripts/list-shares.sh "$TOKEN"
 
-```json
-{
-  "mcpServers": {
-    "evc-relay": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/evc-team-relay-openclaw-skill", "relay_mcp.py"],
-      "env": {
-        "RELAY_CP_URL": "https://cp.yourdomain.com",
-        "RELAY_EMAIL": "agent@yourdomain.com",
-        "RELAY_PASSWORD": "your-password"
-      }
-    }
-  }
-}
-```
+# List files in a folder
+bash scripts/list-files.sh "$TOKEN" "<share_id>"
 
-**Codex CLI** — add to `codex.json`:
+# Read a note
+bash scripts/read.sh "$TOKEN" "<share_id>" "<doc_id>"
 
-```json
-{
-  "mcp_servers": {
-    "evc-relay": {
-      "type": "stdio",
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/evc-team-relay-openclaw-skill", "relay_mcp.py"],
-      "env": {
-        "RELAY_CP_URL": "https://cp.yourdomain.com",
-        "RELAY_EMAIL": "agent@yourdomain.com",
-        "RELAY_PASSWORD": "your-password"
-      }
-    }
-  }
-}
-```
-
-**OpenCode** — add to `opencode.json`:
-
-```json
-{
-  "mcpServers": {
-    "evc-relay": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/evc-team-relay-openclaw-skill", "relay_mcp.py"],
-      "env": {
-        "RELAY_CP_URL": "https://cp.yourdomain.com",
-        "RELAY_EMAIL": "agent@yourdomain.com",
-        "RELAY_PASSWORD": "your-password"
-      }
-    }
-  }
-}
-```
-
-See `config/` for ready-to-copy config templates.
-
----
-
-## MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `authenticate` | Authenticate with credentials (auto-managed) |
-| `list_shares` | List accessible shares (filter by kind, ownership) |
-| `list_files` | List files in a folder share |
-| **`read_file`** | Read a file by path from a folder share |
-| `read_document` | Read document by doc_id (low-level) |
-| **`upsert_file`** | Create or update a file by path |
-| `write_document` | Write to a document by doc_id |
-| `delete_file` | Delete a file from a folder share |
-
-**Recommended workflow:** `list_shares` → `list_files` → `read_file` / `upsert_file`
-
-Authentication is automatic — the server logs in and refreshes tokens internally.
-
----
-
-## Remote Mode (HTTP Transport)
-
-Run as an HTTP server for remote or shared deployments:
-
-```bash
-# Direct
-uv run relay_mcp.py --transport http --port 8888
-
-# Docker
-docker compose up -d
-```
-
-Then point your MCP client to `http://your-server:8888/mcp` using the streamable-http transport type.
-
-### Docker
-
-```bash
-# Build and run
-docker compose up -d
-
-# With custom env
-RELAY_CP_URL=https://cp.yourdomain.com \
-RELAY_EMAIL=agent@yourdomain.com \
-RELAY_PASSWORD=your-password \
-docker compose up -d
-```
-
----
-
-## OpenClaw Skill (Legacy)
-
-This repo also works as a classic OpenClaw bash-scripts skill. See [SKILL.md](SKILL.md) for the original bash-based interface.
-
-```bash
-cp -r . ~/.openclaw/skills/evc-team-relay/
-chmod +x ~/.openclaw/skills/evc-team-relay/scripts/*.sh
+# Write a note
+echo "# Hello from my agent" | bash scripts/write.sh "$TOKEN" "<share_id>" "<doc_id>" -
 ```
 
 ---
@@ -154,21 +136,13 @@ chmod +x ~/.openclaw/skills/evc-team-relay/scripts/*.sh
 ## How It Works
 
 ```
-┌─────────────┐     MCP / REST     ┌──────────────┐     Yjs CRDT      ┌──────────────┐
+┌─────────────┐     REST API      ┌──────────────┐     Yjs CRDT      ┌──────────────┐
 │  AI Agent   │ ◄──────────────► │  Team Relay  │ ◄──────────────► │   Obsidian   │
-│ (any tool)  │   read / write   │   Server     │    real-time     │    Client    │
+│ (OpenClaw)  │   read / write   │   Server     │    real-time     │    Client    │
 └─────────────┘                  └──────────────┘      sync         └──────────────┘
 ```
 
-The MCP server talks to Team Relay's REST API. Team Relay stores documents as Yjs CRDTs and syncs them to Obsidian clients in real-time. Changes made by the agent appear in Obsidian instantly — and vice versa.
-
----
-
-## Prerequisites
-
-- Python 3.10+ with [uv](https://docs.astral.sh/uv/) (recommended) or pip
-- A running [EVC Team Relay](https://github.com/entire-vc/evc-team-relay) instance (self-hosted or [hosted](https://entire.vc))
-- A user account on the Relay control plane
+The skill talks to Team Relay's REST API. Team Relay stores documents as Yjs CRDTs and syncs them to connected Obsidian clients in real-time. Changes made by the agent appear in Obsidian instantly — and vice versa.
 
 ---
 
@@ -180,13 +154,13 @@ The MCP server talks to Team Relay's REST API. Team Relay stores documents as Yj
 | **Team Relay** | Self-hosted collaboration server | [repo](https://github.com/entire-vc/evc-team-relay) |
 | **Team Relay Plugin** | Obsidian plugin for Team Relay | [repo](https://github.com/entire-vc/evc-team-relay-obsidian-plugin) |
 | **Spark MCP** | MCP server for AI workflow catalog | [repo](https://github.com/entire-vc/evc-spark-mcp) |
-| **Relay MCP** ← you are here | AI agent ↔ vault access | this repo |
+| **OpenClaw Skill** ← you are here | AI agent ↔ vault access | this repo |
 
 ## Community
 
-- [entire.vc](https://entire.vc)
-- [Discussions](https://github.com/entire-vc/.github/discussions)
-- in@entire.vc
+- 🌐 [entire.vc](https://entire.vc)
+- 💬 [Discussions](https://github.com/entire-vc/.github/discussions)
+- 📧 in@entire.vc
 
 ## License
 
