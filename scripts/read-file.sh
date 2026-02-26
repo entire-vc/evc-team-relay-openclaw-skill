@@ -2,21 +2,27 @@
 # Read a file from a folder share by its path.
 # Resolves file path → doc_id automatically via list-files, then reads content.
 #
-# Usage: scripts/read-file.sh <token> <folder_share_id> <file_path> [key]
+# Usage: scripts/read-file.sh <folder_share_id> <file_path> [key]
 # Args:
-#   token           — JWT access token
 #   folder_share_id — folder share UUID
 #   file_path       — file path within the folder (e.g. "Marketing/plan.md")
 #   key             — (optional) Yjs key, defaults to "contents"
-# Env: RELAY_CP_URL
+# Env: RELAY_CP_URL, RELAY_TOKEN (or pass token as first arg)
 # Output: JSON with doc_id, path, content
 set -euo pipefail
 
 : "${RELAY_CP_URL:?Set RELAY_CP_URL}"
-TOKEN="${1:?Usage: read-file.sh <token> <folder_share_id> <file_path> [key]}"
-FOLDER_SHARE_ID="${2:?Usage: read-file.sh <token> <folder_share_id> <file_path> [key]}"
-FILE_PATH="${3:?Usage: read-file.sh <token> <folder_share_id> <file_path> [key]}"
-KEY="${4:-contents}"
+
+# Token: prefer RELAY_TOKEN env var, fall back to $1 (backward-compatible)
+if [ -n "${RELAY_TOKEN:-}" ]; then
+  TOKEN="$RELAY_TOKEN"
+else
+  TOKEN="${1:?Usage: read-file.sh [token] <folder_share_id> <file_path> [key] (or set RELAY_TOKEN)}"
+  shift
+fi
+FOLDER_SHARE_ID="${1:?Usage: read-file.sh <folder_share_id> <file_path> [key]}"
+FILE_PATH="${2:?Usage: read-file.sh <folder_share_id> <file_path> [key]}"
+KEY="${3:-contents}"
 
 # Step 1: List files to resolve path → doc_id
 FILES_JSON=$(curl -sf "${RELAY_CP_URL}/v1/documents/${FOLDER_SHARE_ID}/files?share_id=${FOLDER_SHARE_ID}" \

@@ -5,23 +5,29 @@
 # For folder shares, use upsert-file.sh instead — it properly registers
 # files in folder metadata so Obsidian can see them.
 #
-# Usage: scripts/write.sh <token> <share_id> <doc_id> <content> [key]
-#    or: echo "content" | scripts/write.sh <token> <share_id> <doc_id> - [key]
+# Usage: scripts/write.sh <share_id> <doc_id> <content> [key]
+#    or: echo "content" | scripts/write.sh <share_id> <doc_id> - [key]
 # Args:
-#   token    — JWT access token
 #   share_id — share UUID (for ACL check)
 #   doc_id   — document ID
 #   content  — text content to write, or "-" to read from stdin
 #   key      — (optional) Yjs key, defaults to "contents"
-# Env: RELAY_CP_URL
+# Env: RELAY_CP_URL, RELAY_TOKEN (or pass token as first arg)
 set -euo pipefail
 
 : "${RELAY_CP_URL:?Set RELAY_CP_URL}"
-TOKEN="${1:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
-SHARE_ID="${2:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
-DOC_ID="${3:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
-CONTENT_ARG="${4:?Usage: write.sh <token> <share_id> <doc_id> <content> [key]}"
-KEY="${5:-contents}"
+
+# Token: prefer RELAY_TOKEN env var, fall back to $1 (backward-compatible)
+if [ -n "${RELAY_TOKEN:-}" ]; then
+  TOKEN="$RELAY_TOKEN"
+else
+  TOKEN="${1:?Usage: write.sh [token] <share_id> <doc_id> <content> [key] (or set RELAY_TOKEN)}"
+  shift
+fi
+SHARE_ID="${1:?Usage: write.sh <share_id> <doc_id> <content> [key]}"
+DOC_ID="${2:?Usage: write.sh <share_id> <doc_id> <content> [key]}"
+CONTENT_ARG="${3:?Usage: write.sh <share_id> <doc_id> <content> [key]}"
+KEY="${4:-contents}"
 
 # Safety check: detect folder shares and refuse
 # If share_id == doc_id AND the share has a files endpoint, it's likely a folder share
