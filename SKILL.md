@@ -1,6 +1,6 @@
 ---
 name: evc-team-relay
-version: 1.2.0
+version: 1.1.2
 description: >
   Read and write Obsidian notes stored in EVC Team Relay collaborative vault.
   Use when agent needs to: read note content from a shared Obsidian vault,
