@@ -5,7 +5,7 @@
 # Output: access_token (plain text, no newline) — suitable for $()
 set -euo pipefail
 
-: "${RELAY_CP_URL:?Set RELAY_CP_URL (e.g. https://cp.your-domain.com)}"
+: "${RELAY_CP_URL:?Set RELAY_CP_URL (e.g. https://cp.tr.entire.vc)}"
 : "${RELAY_EMAIL:?Set RELAY_EMAIL}"
 : "${RELAY_PASSWORD:?Set RELAY_PASSWORD}"
 

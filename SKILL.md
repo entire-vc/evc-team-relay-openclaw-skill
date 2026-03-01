@@ -1,6 +1,6 @@
 ---
 name: evc-team-relay
-version: 1.1.1
+version: 1.2.0
 description: >
   Read and write Obsidian notes stored in EVC Team Relay collaborative vault.
   Use when agent needs to: read note content from a shared Obsidian vault,
@@ -29,7 +29,7 @@ REST API skill for reading and writing collaborative Obsidian vault documents vi
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `RELAY_CP_URL` | yes | Control plane URL, e.g. `https://cp.your-domain.com` |
+| `RELAY_CP_URL` | yes | Control plane URL, e.g. `https://cp.tr.entire.vc` |
 | `RELAY_EMAIL` | yes | User email for authentication |
 | `RELAY_PASSWORD` | yes | User password |
 | `RELAY_TOKEN` | no | JWT token (set via `export RELAY_TOKEN=$(scripts/auth.sh)`) |

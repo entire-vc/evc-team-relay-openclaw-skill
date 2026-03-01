@@ -1,6 +1,6 @@
 # EVC Team Relay — API Reference
 
-Base URL: `$RELAY_CP_URL` (e.g. `https://cp.your-domain.com`)
+Base URL: `$RELAY_CP_URL` (e.g. `https://cp.tr.entire.vc`)
 
 All endpoints require `Authorization: Bearer <token>` unless noted otherwise.
 
