@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-skill-FF5A2D)](https://github.com/openclaw/openclaw)
-[![Entire VC](https://img.shields.io/badge/Entire_VC-toolbox-525769)](https://entire.vc)
+[![Install via Spark](https://spark.entire.vc/badges/evc-team-relay-openclaw-skill/install.svg)](https://spark.entire.vc/get/evc-team-relay-openclaw-skill?utm_source=github&utm_medium=readme)
 
 **Give your AI agent read/write access to your Obsidian vault.**
 
