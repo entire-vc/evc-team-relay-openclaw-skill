@@ -161,7 +161,8 @@ The skill talks to Team Relay's REST API. Team Relay stores documents as Yjs CRD
 
 - 🌐 [entire.vc](https://entire.vc)
 - 💬 [Discussions](https://github.com/entire-vc/.github/discussions)
-- 📧 in@entire.vc
+- 📧 <support@entire.vc>
+- 🛟 [Where to get help and what to expect](https://github.com/entire-vc/evc-team-relay-openclaw-skill/blob/main/SUPPORT.md)
 
 ## License
 
