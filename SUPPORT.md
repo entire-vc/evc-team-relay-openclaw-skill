@@ -44,7 +44,7 @@ the thread than go quiet.
 
 This repository holds the OpenClaw skill. The product it talks to lives elsewhere:
 
-- **The Obsidian plugin** — [evc-team-relay-obsidian-plugin](https://github.com/entire-vc/evc-team-relay-obsidian-plugin).
+- **The Obsidian plugin** — [evc-team-relay-plugin](https://github.com/entire-vc/evc-team-relay-plugin).
 - **The tool server** — [evc-team-relay-mcp](https://github.com/entire-vc/evc-team-relay-mcp).
 - **The hosted control plane and accounts** — [evc-team-relay](https://github.com/entire-vc/evc-team-relay),
   or email <support@entire.vc>.
