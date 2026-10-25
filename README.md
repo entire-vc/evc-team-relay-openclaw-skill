@@ -151,7 +151,7 @@ The skill talks to Team Relay's REST API. Team Relay stores documents as Yjs CRD
 | Product | What it does | Link |
 |---------|-------------|------|
 | **Team Relay** | Self-hosted collaboration server | [repo](https://github.com/entire-vc/evc-team-relay) |
-| **Team Relay Plugin** | Obsidian plugin for Team Relay | [repo](https://github.com/entire-vc/evc-team-relay-plugin) |
+| **Team Relay Sync** | Obsidian plugin for Team Relay | [install](https://community.obsidian.md/plugins/team-relay-sync) / [repo](https://github.com/entire-vc/evc-team-relay-obsidian) |
 | **Relay MCP** | MCP server for Claude Code, Codex, OpenCode | [repo](https://github.com/entire-vc/evc-team-relay-mcp) |
 | **OpenClaw Skill** ← you are here | OpenClaw agent skill (bash) | this repo |
 | **Local Sync** | Vault ↔ AI dev tools sync | [repo](https://github.com/entire-vc/evc-local-sync-plugin) |
